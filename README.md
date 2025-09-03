@@ -51,7 +51,7 @@ pip install streamlit pymongo neo4j pyvis pandas numpy matplotlib llama_index go
 #### Make sure MongoDB and Neo4j are both running, then:
 
 ```bash
-streamlit run app.py
+streamlit run main/app.py
 ```
 #### The app will open in your default web browser.
 
@@ -72,8 +72,10 @@ streamlit run app.py
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=your_username
 NEO4J_PASSWORD=your_password
-MONGO_URI=mongodb://localhost:27017
+MONGO_URI=your_uri_name
 MONGO_DB=your_db_name
+MONGO_COLLECTION=your_collection_name
+VECTOR_INDEX_COLLECTION=your_vector_index_collection_name
 ```
 #### This avoids hardcoding sensitive credentials into the codebase.
 
