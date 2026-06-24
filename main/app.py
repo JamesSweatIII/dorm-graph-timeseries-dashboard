@@ -22,10 +22,10 @@ st.markdown("""
 }
 section[data-testid="stMain"] { max-width: 100% !important; }
 .main > .block-container {
-    max-width: 100% !important;
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
-    width: 100% !important;
+    max-width: 820px !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    margin: 0 auto !important;
 }
 [data-testid="stVerticalBlock"] { width: 100% !important; }
 [data-testid="stChatInput"] { width: 100% !important; max-width: 100% !important; }
