@@ -16,7 +16,7 @@ def _get_animate_js():
 
 
 def _iframe(html, height=None):
-    src = "data:text/html;base64," + base64.b64encode(html.encode()).decode()
+    src = "data:text/html;charset=utf-8;base64," + base64.b64encode(html.encode("utf-8")).decode()
     st.iframe(src, width="stretch", height=height)
 
 
