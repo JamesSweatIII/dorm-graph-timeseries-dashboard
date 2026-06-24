@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from openai import OpenAI
 
 
@@ -257,17 +256,13 @@ class Agent:
         return self.client is not None
 
     def _call_function(self, name, args):
-        print(f"[AGENT] Calling: {name}({args})", file=sys.stderr, flush=True)
         fn = getattr(self.service, name, None)
         if not fn:
-            print(f"[AGENT] Function {name} not found!", file=sys.stderr, flush=True)
             return f"Error: function {name} not found"
         try:
             result = fn(**args)
-            print(f"[AGENT] Result: {json.dumps(result, default=str)[:200]}", file=sys.stderr, flush=True)
             return json.dumps(result, default=str)
         except Exception as e:
-            print(f"[AGENT] Error: {e}", file=sys.stderr, flush=True)
             return json.dumps({"error": str(e)})
 
     def ask(self, user_input):
@@ -293,12 +288,9 @@ class Agent:
 
             if not msg.tool_calls:
                 out = msg.content or ""
-                print(f"[AGENT] Final response: {out[:200]}", file=sys.stderr, flush=True)
                 self.messages.append({"role": "assistant", "content": out})
                 return out
 
-            calls = [(tc.function.name, tc.function.arguments) for tc in msg.tool_calls]
-            print(f"[AGENT] LLM requests tools: {calls}", file=sys.stderr, flush=True)
             self.messages.append(msg)
 
             for tc in msg.tool_calls:
