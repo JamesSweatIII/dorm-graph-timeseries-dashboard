@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import streamlit as st
 
 _ANIMATE_JS_CACHE = None
@@ -12,6 +13,11 @@ def _get_animate_js():
         with open(path) as f:
             _ANIMATE_JS_CACHE = f.read()
     return _ANIMATE_JS_CACHE
+
+
+def _iframe(html, height=None):
+    src = "data:text/html;base64," + base64.b64encode(html.encode()).decode()
+    st.iframe(src, width=None, height=height, scrolling=True)
 
 
 def animated_metrics(metrics, key="metrics"):
@@ -55,7 +61,7 @@ body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; 
     m.forEach(function(x,i){{ var e=document.getElementById('{key}-v'+i); if(e) anim8.countUp(e,x.t,900,''); }});
 }})();
 </script></body></html>"""
-    st.components.v1.html(html, height=125)
+    _iframe(html, height=125)
 
 
 def animated_chart(data, title="", key="chart"):
@@ -90,7 +96,7 @@ canvas {{ display:block; width:{cw}px; height:{ch}px; border-radius:10px; }}
     if(c) anim8.LineChart(c, d, {{padding:{{top:30,right:20,bottom:38,left:55}},duration:700,backgroundColor:'rgba(30,41,59,0.5)',paddingRatio:0.15}});
 }})();
 </script></body></html>"""
-    st.components.v1.html(html, height=ch + 55)
+    _iframe(html, height=ch + 55)
 
 
 def page_header(title, subtitle=""):
@@ -116,7 +122,7 @@ body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; 
     {f'<div class="sb">{subtitle}</div>' if subtitle else ''}
 </div>
 <script>{_get_animate_js()}</script></body></html>"""
-    st.components.v1.html(html, height=105)
+    _iframe(html, height=105)
 
 
 def info_banner(text):
@@ -134,4 +140,4 @@ body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; 
 </style></head><body>
 <div class="bn">{text}</div>
 <script>{_get_animate_js()}</script></body></html>"""
-    st.components.v1.html(html, height=52)
+    _iframe(html, height=52)
