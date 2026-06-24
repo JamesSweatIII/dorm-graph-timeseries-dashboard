@@ -1,108 +1,75 @@
 # Dorm-Graph-Timeseries-Dashboard
 
-## Overview
+Streamlit Q&A agent over a Neo4j dormitory knowledge graph (rooms, AC units, sensors) with hybrid regex/LLM chat and mock time series data.
 
-This project creates a live dashboard for visualizing and interacting with dormitory building data using both time series and graph-based approaches. It merges IoT sensor simulation (e.g., temperature and occupancy data) with spatial modeling of infrastructure (e.g., dorm rooms and AC units) in a graph database.
+## Architecture
 
-Built with Python and Streamlit, the dashboard leverages:
+- **`main/app.py`** — Streamlit entry point, hybrid chat flow (regex fast-path → LLM fallback)
+- **`main/dorm_service.py`** — Neo4j query/mutation layer (20+ methods: CRUD for nodes, relationships, stats)
+- **`main/query_router.py`** — Regex fast-path router with complexity heuristic and `FALLBACK` sentinel
+- **`main/agent.py`** — LLM agent with OpenAI-compatible client, system prompt, and 20+ function tool definitions
+- **`main/time_series.py`** — Generates mock 24h time series data (room temp/humidity, AC power/load, sensor values)
+- **`main/load_graph.py`** — Seeds the Neo4j graph with rooms, AC units, sensors, and relationships
 
-- **Neo4j** for spatial and logical relationships (e.g., which AC unit serves which rooms),
-- **MongoDB** for storing and querying time series sensor data, and
-- **LLM-powered tools** (via LlamaIndex and Google Generative AI) to enable advanced querying and insights.
+## Data Model
 
-## Motivation
+- `Room` — `room_id` (e.g. Room01), `room_type` (dorm, mechanical_room)
+- `ACUnit` — `ac_id` (e.g. AC1)
+- `Sensor` — `sensor_id` (e.g. T01), `type` (temperature, occupancy)
 
-Modern smart buildings rely on interconnected data sources to optimize comfort, energy efficiency, and maintenance. This project simulates such a system and enables intuitive querying and visualization for:
+Relationships: `SERVICES`, `LOCATED_IN`, `HAS_SENSOR`, `MONITORS`
 
-- Room-specific sensor histories,
-- AC unit relationships,
-- Higher-level entity control (e.g., energy service units managing ACs),
-- Time-aware analysis of environmental patterns.
-
-## Features
-
-- Graph-based data modeling (Neo4j)
-- Time series data generation and logging (temperature, occupancy)
-- MongoDB for efficient time-based storage
-- PyVis-based interactive graph visualization in Streamlit
-- Secure environment configuration with `.env`
-- Compatibility with LLM-driven assistants (LlamaIndex, Gemini)
-  
 ## Quickstart
 
-### Clone the repository
+### Prerequisites
+
+- Python 3.9+
+- [Neo4j Aura](https://console.neo4j.io) (or local Neo4j) instance
+
+### Setup
 
 ```bash
 git clone https://github.com/your-username/Dorm-Graph-Timeseries-Dashboard.git
 cd Dorm-Graph-Timeseries-Dashboard
-```
-### Install dependencies
-#### Using requirements.txt:
-
-```bash
 pip install -r requirements.txt
 ```
-#### Or manually:
 
-```bash
-pip install streamlit pymongo neo4j pyvis pandas numpy matplotlib llama_index google-generativeai python-dotenv
+### Configuration
+
+Create a `.env` file:
+
 ```
-### Run the Streamlit app
-#### Make sure MongoDB and Neo4j are both running, then:
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USER=your_username
+NEO4J_PASSWORD=your_password
+```
+
+Optional LLM configuration (uses OpenRouter by default):
+
+```
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-v1-your-key
+LLM_MODEL=qwen/qwen-2.5-72b-instruct
+```
+
+### Run
 
 ```bash
 streamlit run main/app.py
 ```
-#### The app will open in your default web browser.
 
-### Project Structure
-```bash
-.
-├── app.py                   # Main dashboard interface
-├── data_storage.py          # MongoDB connection & utilities
-├── load_graph.py            # Graph builder for Neo4j
-├── neo4j_utils.py           # Neo4j helper functions
-├── time_series_generator.py # Time series data simulator
-├── utils.py                 # Shared helper functions
-├── requirements.txt         # Python dependencies
-```
-### .env File Format
-#### Create a .env file in your project directory with:
-```bash
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=your_username
-NEO4J_PASSWORD=your_password
-MONGO_URI=your_uri_name
-MONGO_DB=your_db_name
-MONGO_COLLECTION=your_collection_name
-VECTOR_INDEX_COLLECTION=your_vector_index_collection_name
-```
-#### This avoids hardcoding sensitive credentials into the codebase.
+## Query Examples
 
-### LLM Integration
-- This project optionally supports natural language interfaces using LLMs like Google Gemini through:
+**Simple (regex fast-path):**
+- "Show all rooms"
+- "Which rooms have AC?"
+- "Where is AC1 located?"
+- "Tell me about Room02"
+- "Add a room called Room09"
+- "Delete Room09"
 
-- llama_index: to convert graph + time series data into queryable context.
-
-- google-generativeai: for querying and generating insights from structured data.
-
-- Make sure your API keys are set up if using these features.
-
-### Use Cases
-- Visualize AC unit-to-room service mappings
-
-- Track changes in occupancy or temperature over time
-
-- Run LLM-powered diagnostics like:
-
-- "Which AC unit had the most load yesterday?"
-
-- "Which room was unoccupied during high-temperature periods?"
-
-### Future Improvements
-- Add user authentication and role-based access
-
-- Support historical anomaly detection and graph alerts
-
-- Expand to support multi-building systems
-
+**Complex (LLM-powered):**
+- "Compare Room02 and Room03 with temperature data"
+- "Get me rooms with temperature sensors but without occupancy sensors"
+- "How many rooms, AC units, and sensors are there?"
+- "What's the average number of sensors per room?"
