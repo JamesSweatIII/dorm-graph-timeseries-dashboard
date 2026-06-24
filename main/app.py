@@ -5,7 +5,7 @@ import pandas as pd
 from dorm_service import DormSearchService
 from query_router import route_query, FALLBACK
 from agent import Agent
-from animate_component import animated_metrics, animated_chart, page_header, info_banner
+from animate_component import page_header, animated_chart
 
 load_dotenv()
 
@@ -44,24 +44,55 @@ section[data-testid="stMain"] { max-width: 100% !important; }
 [data-testid="stSidebar"] { display: none; }
 .stApp > .main > .block-container { z-index: 1; position: relative; }
 
-.welcome-card {
-    background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 16px; padding: 24px; text-align: center; margin: 16px 0;
-    opacity: 0; animation: wIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s forwards;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+.landing-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: calc(100vh - 200px); padding: 40px 0;
+    opacity: 0; animation: wIn 0.5s ease-out 0.1s forwards;
 }
 @keyframes wIn { to { opacity: 1; } }
-.welcome-card .emoji { font-size: 40px; display: block; margin-bottom: 8px; }
-.welcome-card h2 { color: #2d2a3e; font-size: 18px; font-weight: 600; margin: 0 0 4px; }
-.welcome-card p { color: #6b6578; font-size: 13px; margin: 0 0 16px; }
-.welcome-suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.welcome-chip {
-    background: rgba(245,158,111,0.08); border: 1px solid rgba(245,158,111,0.15);
-    border-radius: 20px; padding: 6px 14px; color: #c77d4a; font-size: 12px;
-    cursor: pointer; transition: all 0.2s ease;
-    font-family: inherit;
+.landing-icon {
+    font-size: 52px; margin-bottom: 16px; display: block; text-align: center;
 }
-.welcome-chip:hover { background: rgba(245,158,111,0.15); border-color: rgba(245,158,111,0.3); }
+.landing-title {
+    font-size: 32px; font-weight: 700; color: #2d2a3e; text-align: center;
+    margin: 0 0 8px; letter-spacing: -0.3px;
+}
+.landing-title span { color: #c77d4a; }
+.landing-sub {
+    font-size: 15px; color: #6b6578; text-align: center;
+    margin: 0 0 28px; max-width: 440px; line-height: 1.5;
+}
+.landing-suggestions {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    max-width: 520px;
+}
+.landing-chip {
+    background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 24px; padding: 10px 20px; color: #4a4560; font-size: 14px;
+    cursor: pointer; transition: all 0.2s ease; font-family: inherit;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.landing-chip:hover {
+    background: rgba(255,255,255,0.95); border-color: rgba(245,158,111,0.25);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06); color: #c77d4a;
+}
+
+.landing-metrics {
+    display: flex; gap: 24px; justify-content: center; margin-top: 36px;
+    flex-wrap: wrap;
+}
+.landing-metric {
+    text-align: center; padding: 8px 16px;
+}
+.landing-metric .lmv {
+    font-size: 24px; font-weight: 700; color: #2d2a3e; font-variant-numeric:tabular-nums;
+}
+.landing-metric .lml {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: rgba(0,0,0,0.35); margin-top: 2px;
+}
+
+.chat-area { margin-top: 8px; }
 
 .msg-row {
     display: flex; margin-bottom: 14px; gap: 10px;
@@ -195,27 +226,13 @@ service = DormSearchService(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
 agent = Agent(service)
 llm_available = agent.is_available()
 
-page_header("Dormitory Q&A Agent")
-
-if llm_available:
-    provider = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
-    model = os.getenv("LLM_MODEL", "qwen2.5:7b")
-    info_banner(f"LLM: <strong>{model}</strong> via {provider}")
-else:
-    info_banner("No LLM connected. I'll use keyword matching to answer your questions.")
-
 with service.driver.session() as s:
     rc = s.run("MATCH (r:Room) RETURN count(r) AS c").single()["c"]
     ac = s.run("MATCH (a:ACUnit) RETURN count(a) AS c").single()["c"]
     sc = s.run("MATCH (s:Sensor) RETURN count(s) AS c").single()["c"]
     ec = s.run("MATCH ()-[r]->() RETURN count(r) AS c").single()["c"]
 
-animated_metrics([
-    {"label": "Rooms", "value": rc, "color": "f59e6f"},
-    {"label": "AC Units", "value": ac, "color": "d4a56a"},
-    {"label": "Sensors", "value": sc, "color": "7bab7a"},
-    {"label": "Relationships", "value": ec, "color": "b89abe"},
-])
+page_header("Dormitory Q&A Agent")
 
 
 def render_chart(content):
@@ -253,56 +270,42 @@ def show_typing():
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
 if "thinking" not in st.session_state:
     st.session_state.thinking = False
 
 if not st.session_state.messages:
-    st.markdown("""
-    <div class="welcome-card">
-        <span class="emoji">👋</span>
-        <h2>Hey there! How can I help you?</h2>
-        <p>Ask me anything about the dormitory — rooms, AC units, sensors, and more.</p>
-        <div class="welcome-suggestions">
-            <span class="welcome-chip">🏠 Show all rooms</span>
-            <span class="welcome-chip">❄️ Which rooms have AC?</span>
-            <span class="welcome-chip">🌡️ Temperature data for Room01</span>
-            <span class="welcome-chip">📊 How many sensors?</span>
-            <span class="welcome-chip">➕ Add a room called Room09</span>
+    st.markdown(f"""
+    <div class="landing-wrap">
+        <span class="landing-icon">🏠</span>
+        <div class="landing-title">Dormitory <span>Q&A</span></div>
+        <div class="landing-sub">Ask anything about your smart dormitory — rooms, AC units, sensors, and more.</div>
+        <div class="landing-suggestions">
+            <span class="landing-chip">🏠 Show all rooms</span>
+            <span class="landing-chip">❄️ Which rooms have AC?</span>
+            <span class="landing-chip">🌡️ Temperature for Room01</span>
+            <span class="landing-chip">📊 How many sensors?</span>
+            <span class="landing-chip">➕ Add a room called Room09</span>
+        </div>
+        <div class="landing-metrics">
+            <div class="landing-metric"><div class="lmv">{rc}</div><div class="lml">Rooms</div></div>
+            <div class="landing-metric"><div class="lmv">{ac}</div><div class="lml">AC Units</div></div>
+            <div class="landing-metric"><div class="lmv">{sc}</div><div class="lml">Sensors</div></div>
+            <div class="landing-metric"><div class="lmv">{ec}</div><div class="lml">Relationships</div></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-for msg in st.session_state.messages:
-    if isinstance(msg["content"], list):
-        for item in msg["content"]:
-            if isinstance(item, dict) and "chart" in item:
-                render_chart(item)
-            else:
-                write_message("assistant", str(item))
-    else:
-        write_message(msg["role"], msg["content"])
-
-with st.expander("Try these questions", expanded=False):
-    st.markdown("""
-    **Time series:**
-    - "Show temperature data for Room01"
-    - "Show power readings for AC1"
-    - "Chart humidity for Room02"
-
-    **Graph queries:**
-    - "How many rooms, AC units, and sensors are there?"
-    - "Tell me about Room01"
-    - "What serves Room01?"
-    - "What AC is located in Room07?"
-
-    **Add / Delete:**
-    - "Add a room called Room09"
-    - "Delete Room09"
-    """)
+else:
+    for msg in st.session_state.messages:
+        if isinstance(msg["content"], list):
+            for item in msg["content"]:
+                if isinstance(item, dict) and "chart" in item:
+                    render_chart(item)
+                else:
+                    write_message("assistant", str(item))
+        else:
+            write_message(msg["role"], msg["content"])
 
 st.markdown('<div id="chat-end"></div>', unsafe_allow_html=True)
-
 st.markdown(
     "<script>var e=document.getElementById('chat-end'); if(e) e.scrollIntoView({behavior:'smooth'});</script>",
     unsafe_allow_html=True
