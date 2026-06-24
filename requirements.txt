@@ -1,10 +1,5 @@
-streamlit 
-pymongo 
-neo4j 
-pyvis 
-pandas 
-numpy 
-matplotlib 
-llama_index 
-google-generativeai 
+streamlit
+neo4j
 python-dotenv
+pandas
+openai
