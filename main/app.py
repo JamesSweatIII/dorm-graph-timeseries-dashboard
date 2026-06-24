@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 import streamlit as st
-import pandas as pd
 from dorm_service import DormSearchService
 from query_router import route_query, FALLBACK
 from agent import Agent
@@ -13,7 +12,7 @@ NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
 
-st.set_page_config(page_title="Dormitory Agent", layout="wide")
+st.set_page_config(page_title="Dormitory Agent", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -223,7 +222,34 @@ if not NEO4J_PASSWORD:
     st.stop()
 
 service = DormSearchService(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-agent = Agent(service)
+
+WEAK_MODEL = "qwen/qwen-2.5-72b-instruct"
+STRONG_MODEL = "openai/gpt-4o-2024-11-20"
+
+with st.sidebar:
+    st.markdown("### Model")
+    model_choice = st.selectbox(
+        "Select model", ["Weak (Qwen 2.5)", "Strong (GPT-4o)"],
+        label_visibility="collapsed"
+    )
+    selected_model = STRONG_MODEL if model_choice == "Strong (GPT-4o)" else WEAK_MODEL
+
+    if "model" not in st.session_state or st.session_state.model != selected_model:
+        st.session_state.model = selected_model
+        st.session_state.agent = Agent(
+            service,
+            model=selected_model,
+            base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434/v1"),
+            api_key=os.getenv("LLM_API_KEY", "ollama"),
+        )
+        st.session_state.agent.reset()
+        st.session_state.messages = []
+
+    st.caption(f"Using `{selected_model.split('/')[-1]}`")
+    st.divider()
+    st.caption("**Dormitory Q&A** — ask about rooms, AC units, sensors, and relationships in the knowledge graph.")
+
+agent = st.session_state.agent
 llm_available = agent.is_available()
 
 with service.driver.session() as s:
