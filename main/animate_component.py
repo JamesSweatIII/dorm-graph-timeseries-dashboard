@@ -17,7 +17,7 @@ def _get_animate_js():
 
 def _iframe(html, height=None):
     src = "data:text/html;base64," + base64.b64encode(html.encode()).decode()
-    st.iframe(src, width=None, height=height, scrolling=True)
+    st.iframe(src, width="stretch", height=height)
 
 
 def animated_metrics(metrics, key="metrics"):
