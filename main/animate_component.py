@@ -38,9 +38,9 @@ def animated_metrics(metrics, key="metrics"):
 body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; }}
 .mg {{ display:grid; grid-template-columns:repeat({len(metrics)},1fr); gap:10px; }}
 .mc {{
-    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.65); border:1px solid rgba(0,0,0,0.06);
     border-radius:14px; padding:16px 12px; text-align:center; position:relative; overflow:hidden;
-    backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px); box-shadow:0 1px 4px rgba(0,0,0,0.04);
 }}
 .mc::after {{
     content:''; position:absolute; top:0; left:0; right:0; height:3px;
@@ -50,8 +50,8 @@ body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; 
 }}
 @keyframes sl {{ to {{ transform:scaleX(1); }} }}
 .mi {{ font-size:22px; margin-bottom:2px; }}
-.ml {{ font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.45); margin-bottom:6px; }}
-.mv {{ font-size:34px; font-weight:700; color:#fff; font-variant-numeric:tabular-nums; }}
+.ml {{ font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(0,0,0,0.4); margin-bottom:6px; }}
+.mv {{ font-size:34px; font-weight:700; color:#2d2a3e; font-variant-numeric:tabular-nums; }}
 </style></head><body>
 <div class="mg">{items_html}</div>
 <script>
@@ -81,7 +81,7 @@ def animated_chart(data, title="", key="chart"):
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; }}
 .cc {{ padding:6px; }}
-.ct {{ color:#94a3b8; font-size:12px; font-weight:500; margin-bottom:4px; padding-left:4px; letter-spacing:0.3px; }}
+.ct {{ color:#6b6578; font-size:12px; font-weight:500; margin-bottom:4px; padding-left:4px; letter-spacing:0.3px; }}
 canvas {{ display:block; width:{cw}px; height:{ch}px; border-radius:10px; }}
 </style></head><body>
 <div class="cc">
@@ -93,7 +93,7 @@ canvas {{ display:block; width:{cw}px; height:{ch}px; border-radius:10px; }}
 (function(){{
     var d = {json.dumps(chart_data)};
     var c = document.getElementById('{key}');
-    if(c) anim8.LineChart(c, d, {{padding:{{top:30,right:20,bottom:38,left:55}},duration:700,backgroundColor:'rgba(30,41,59,0.5)',paddingRatio:0.15}});
+    if(c) anim8.LineChart(c, d, {{padding:{{top:30,right:20,bottom:38,left:55}},duration:700,backgroundColor:'rgba(255,255,255,0.4)',paddingRatio:0.15}});
 }})();
 </script></body></html>"""
     _iframe(html, height=ch + 55)
@@ -112,9 +112,9 @@ body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; 
 @keyframes hIn {{ to {{ opacity:1; transform:translateY(0) scale(1); }} }}
 .hd .emoji {{ font-size:36px; display:block; margin-bottom:4px; }}
 .hd h1 {{ font-size:26px; font-weight:700; margin:0 0 2px; }}
-.hd h1 .w {{ color:#f59e6f; }}
-.hd h1 .t {{ color:#f1f5f9; }}
-.hd .sb {{ font-size:13px; color:rgba(255,255,255,0.4); letter-spacing:0.3px; }}
+.hd h1 .w {{ color:#c77d4a; }}
+.hd h1 .t {{ color:#2d2a3e; }}
+.hd .sb {{ font-size:13px; color:rgba(0,0,0,0.4); letter-spacing:0.3px; }}
 </style></head><body>
 <div class="hd">
     <span class="emoji">🏠</span>
@@ -131,12 +131,13 @@ def info_banner(text):
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ background:transparent; font-family:system-ui,-apple-system,sans-serif; }}
 .bn {{
-    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px;
-    padding:10px 14px; color:#cbd5e1; font-size:13px; opacity:0; text-align:center;
+    background:rgba(255,255,255,0.7); border:1px solid rgba(0,0,0,0.06); border-radius:12px;
+    padding:10px 14px; color:#6b6578; font-size:13px; opacity:0; text-align:center;
     animation:bIn 0.5s cubic-bezier(0.22,1,0.36,1) 0.2s forwards;
+    box-shadow:0 1px 4px rgba(0,0,0,0.04);
 }}
 @keyframes bIn {{ to {{ opacity:1; }} }}
-.bn strong {{ color:#f59e6f; }}
+.bn strong {{ color:#c77d4a; }}
 </style></head><body>
 <div class="bn">{text}</div>
 <script>{_get_animate_js()}</script></body></html>"""
