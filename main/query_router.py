@@ -13,10 +13,6 @@ def route_query(text, service):
     has_conjunction = bool(re.search(r"\b(?:and|but|or|also|additionally|meanwhile|however)\b", text_lower))
     has_multiple_topics = len(re.findall(r"\b(room\d*|ac\d*|sensor\d+|t\d+|occ\d+)\b", text_lower)) > 1
     if has_conjunction or has_multiple_topics or word_count > 10:
-        # Only handle mutations (which are unambiguous) before falling through to LLM
-        mutation = _try_mutation(text, service)
-        if mutation:
-            return mutation
         return [FALLBACK]
 
     # ── Mutations: add / delete / remove ─────────────────────────────────────────

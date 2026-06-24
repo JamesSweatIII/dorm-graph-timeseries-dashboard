@@ -1,10 +1,12 @@
 # Dorm-Graph-Timeseries-Dashboard
 
-Streamlit Q&A agent over a Neo4j dormitory knowledge graph (rooms, AC units, sensors) with hybrid regex/LLM chat and mock time series data.
+Streamlit Q&A agent over a Neo4j dormitory knowledge graph (rooms, AC units, sensors) with hybrid regex/LLM chat, mock time series data, and a polished animated chatbot UI.
 
 ## Architecture
 
-- **`main/app.py`** — Streamlit entry point, hybrid chat flow (regex fast-path → LLM fallback)
+- **`main/app.py`** — Streamlit entry point, professional chatbot UI with animated components
+- **`main/animate_component.py`** — Python bridge that generates animated HTML components using `animate.js`
+- **`lib/animate.js`** — Animation engine powering all UI animations (fade, slide, count-up, canvas charts, typing indicator, vis.js network)
 - **`main/dorm_service.py`** — Neo4j query/mutation layer (20+ methods: CRUD for nodes, relationships, stats)
 - **`main/query_router.py`** — Regex fast-path router with complexity heuristic and `FALLBACK` sentinel
 - **`main/agent.py`** — LLM agent with OpenAI-compatible client, system prompt, and 20+ function tool definitions
@@ -58,6 +60,14 @@ LLM_MODEL=qwen/qwen-2.5-72b-instruct
 streamlit run main/app.py
 ```
 
+## Features
+
+- **Polished chatbot UI** — dark warm theme, chat bubbles with avatars, typing indicator, smooth animations
+- **Animated metrics** — count-up cards with accent bars on load
+- **Animated charts** — Canvas-based line charts that draw smoothly with gradient fill
+- **Hybrid query routing** — simple queries handled instantly via regex, complex queries routed to LLM
+- **Compound command support** — multi-step requests (e.g. "Add a room and connect it to AC1") handled by LLM
+
 ## Query Examples
 
 **Simple (regex fast-path):**
@@ -73,3 +83,4 @@ streamlit run main/app.py
 - "Get me rooms with temperature sensors but without occupancy sensors"
 - "How many rooms, AC units, and sensors are there?"
 - "What's the average number of sensors per room?"
+- "Add a room called Room09 and connect it to AC1"
