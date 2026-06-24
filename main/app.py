@@ -5,7 +5,7 @@ import pandas as pd
 from dorm_service import DormSearchService
 from query_router import route_query, FALLBACK
 from agent import Agent
-from animate_component import page_header, animated_chart
+from animate_component import animated_chart
 
 load_dotenv()
 
@@ -231,8 +231,6 @@ with service.driver.session() as s:
     ac = s.run("MATCH (a:ACUnit) RETURN count(a) AS c").single()["c"]
     sc = s.run("MATCH (s:Sensor) RETURN count(s) AS c").single()["c"]
     ec = s.run("MATCH ()-[r]->() RETURN count(r) AS c").single()["c"]
-
-page_header("Dormitory Q&A Agent")
 
 
 def render_chart(content):
