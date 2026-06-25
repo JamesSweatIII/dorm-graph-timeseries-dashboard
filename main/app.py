@@ -19,11 +19,10 @@ st.markdown("""
 .stApp {
     background: linear-gradient(135deg, #f7f3ef 0%, #fdf6f3 30%, #f5f0eb 60%, #f7f3ef 100%);
 }
-section[data-testid="stMain"] { max-width: 100% !important; }
+section[data-testid="stMain"] { max-width: 100% !important; padding: 0 !important; }
 .main > .block-container {
-    max-width: 820px !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+    max-width: 1200px !important;
+    padding: 2rem 0.5rem !important;
     margin: 0 auto !important;
 }
 [data-testid="stVerticalBlock"] { width: 100% !important; }
