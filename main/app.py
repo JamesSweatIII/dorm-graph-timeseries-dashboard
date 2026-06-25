@@ -109,6 +109,7 @@ section[data-testid="stMain"] { max-width: 100% !important; }
 .msg-avatar.u { background: linear-gradient(135deg,#f59e6f,#f7b384); color: #fff; }
 .msg-avatar.a { background: linear-gradient(135deg,#b89abe,#c9aecf); color: #fff; }
 .msg-body { max-width: 78%; }
+.msg-body.has-table { max-width: 95%; overflow-x: auto; }
 .msg-bubble {
     padding: 10px 16px; border-radius: 18px; font-size: 14px; line-height: 1.55;
     color: #2d2a3e; word-wrap: break-word; position: relative;
@@ -285,10 +286,11 @@ def write_message(role, text):
     avatar_content = "🙋" if role == "user" else "🤖"
     avatar = f'<div class="msg-avatar {a}">{avatar_content}</div>'
     bubble_class = "user" if role == "user" else "assistant"
+    body_class = "msg-body" + (" has-table" if "<table" in text else "")
     st.markdown(
         f'<div class="msg-row {role}">'
         + (avatar if role == "assistant" else "")
-        + f'<div class="msg-body"><div class="msg-bubble {bubble_class}">{text}</div></div>'
+        + f'<div class="{body_class}"><div class="msg-bubble {bubble_class}">{text}</div></div>'
         + (avatar if role == "user" else "")
         + '</div>',
         unsafe_allow_html=True
