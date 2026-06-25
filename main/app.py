@@ -40,7 +40,7 @@ section[data-testid="stMain"] { max-width: 100% !important; }
     backdrop-filter: blur(16px) !important;
     border-bottom: 1px solid rgba(0,0,0,0.06) !important;
 }
-[data-testid="stSidebar"] { display: none; }
+[data-testid="stSidebar"] { display: block; }
 .stApp > .main > .block-container { z-index: 1; position: relative; }
 
 .landing-wrap {
