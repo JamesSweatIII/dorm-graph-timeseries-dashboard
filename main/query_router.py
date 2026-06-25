@@ -119,13 +119,15 @@ def route_query(text, service):
             return [f"**All Sensors** ({len(sensors)} total — {temps} temperature, {occs} occupancy)",
                     ", ".join(f"{s['id']} ({s['type']})" for s in sensors)]
 
-    # ── Aggregation: averages / counts ──────────────────────────────────────────
-    if re.search(r"average\s+temperature", text_lower):
-        avg = service.get_average_temperature()
-        if avg is not None:
-            return [f"Average temperature across all rooms: **{avg}°C**"]
-        return ["No temperature data available."]
+    # ── Time series: show readings/chart for a node ──────────────────────────────
+    # But skip if asking for aggregate averages across all rooms — that needs LLM
+    if re.search(r"average.*temperature|temperature.*average|average.*temp|average of all", text_lower):
+        return [FALLBACK]
+    ts = _try_time_series(text_lower, service)
+    if ts:
+        return ts
 
+    # ── Aggregation: averages / counts ──────────────────────────────────────────
     if re.search(r"average\s+(\w+)", text_lower) and ("sensor" in text_lower or "per room" in text_lower):
         avg = service.get_average_sensors_per_room()
         return [f"Average number of sensors per room: **{avg}**"]
@@ -150,7 +152,7 @@ def route_query(text, service):
         sensors = service.get_all_sensors()
         return [f"{len(rooms)} rooms, {len(acs)} AC units, {len(sensors)} sensors"]
 
-    # ── Time series: show readings/chart for a node ──────────────────────────────
+    # ── "with X but without Y" pattern ─────────────────────────────────────────
     with_without = re.search(
         r"(?:find|get|show|list|rooms?)\s*(.*?)(?:with|that have|having)\s+(\w+(?:\s+\w+)?)"
         r"\s*(?:but|and)\s*(?:without|no|not having)\s+(\w+(?:\s+\w+)?)",
@@ -247,7 +249,6 @@ def route_query(text, service):
         entity_id = name_match.group(2).upper().strip()
         if "room" in entity_type:
             entity_id = "Room" + entity_id if not entity_id.startswith("ROOM") else "Room" + entity_id[4:]
-            entity_id = f"Room{int(entity_id[4:]):02d}" if entity_id[4:].isdigit() else entity_id
             room = service.get_room(entity_id)
             if room:
                 return [f"**{room['name']}** ({'Dorm' if room['type'] == 'dorm' else 'Mechanical Room'})"]
@@ -303,10 +304,7 @@ def _extract_node_name(text):
         m = re.search(p, text, re.IGNORECASE)
         if m:
             raw = m.group(1)
-            name = raw[0].upper() + raw[1:] if raw[0].islower() else raw
-            if name.lower().startswith("room") and name[4:].isdigit():
-                name = f"Room{int(name[4:]):02d}"
-            return name
+            return raw[0].upper() + raw[1:] if raw[0].islower() else raw
     return None
 
 
