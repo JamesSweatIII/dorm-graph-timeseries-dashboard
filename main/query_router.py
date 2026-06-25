@@ -128,6 +128,21 @@ def route_query(text, service):
                       "load": "load_pct"}
         mapped = metric_map.get(metric)
         node = _extract_node_name(text)
+
+        # Handle ranges: "room 1-4", "rooms 1 to 4", "room 1 through 4"
+        range_m = re.search(r"rooms?\s*(\d+)\s*(?:to|through|-|–|,)\s*(\d+)", text_lower)
+        if range_m and mapped:
+            start, end = int(range_m.group(1)), int(range_m.group(2))
+            dm = {"power_kw": "Power (kW)", "load_pct": "Load (%)", "temperature": "Temperature", "humidity": "Humidity", "value": "Value"}.get(mapped, mapped)
+            lines = []
+            for i in range(start, end + 1):
+                rid = f"Room{i:02d}"
+                result = service.get_aggregate_reading(rid, mapped)
+                if "error" not in result:
+                    lines.append(f"**{result['node']}** — **{result['average']}** (min: {result['min']}, max: {result['max']})")
+            if lines:
+                return [f"Average {dm} for rooms {start}–{end}:"] + lines
+
         if mapped and node:
             result = service.get_aggregate_reading(node, mapped)
             if "error" not in result:
