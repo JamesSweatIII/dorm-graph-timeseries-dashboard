@@ -324,9 +324,32 @@ def _try_time_series(text, service):
     if not ts:
         return [f"No time series data available for **{node_name}**."]
 
-    lines = [f"### Time Series — {node_name} ({ts['label']})"]
-    lines.append({"chart": ts})
-    return lines
+    data = ts["data"]
+    value_cols = [c for c in ts.get("columns", []) if c not in ("time", "timestamp")]
+    parts = [f"### Time Series — {node_name} ({ts['label']})"]
+
+    # Build a data table
+    val_summaries = []
+    for col in value_cols:
+        vals = [row[col] for row in data if col in row]
+        if vals:
+            avg = round(sum(vals) / len(vals), 1)
+            lo, hi = min(vals), max(vals)
+            val_summaries.append(f"{col}: avg {avg}, min {lo}, max {hi}")
+    if val_summaries:
+        parts.append("_" + "; ".join(val_summaries) + "_")
+
+    col_widths = {}
+    for col in ts["columns"]:
+        items = [str(row.get(col, "")) for row in data[:24]]
+        col_widths[col] = max(len(col), max(len(i) for i in items))
+    header = " | ".join(c.ljust(col_widths[c]) for c in ts["columns"])
+    sep = " | ".join("-" * col_widths[c] for c in ts["columns"])
+    rows = [" | ".join(str(row.get(c, "")).ljust(col_widths[c]) for c in ts["columns"]) for row in data[:24]]
+    parts.append(f"```\n{header}\n{sep}\n" + "\n".join(rows) + "\n```")
+
+    parts.append({"chart": ts})
+    return parts
 
 
 def _extract_node_name(text):
