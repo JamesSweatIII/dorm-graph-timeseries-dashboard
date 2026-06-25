@@ -223,16 +223,29 @@ if not NEO4J_PASSWORD:
 
 service = DormSearchService(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
 
-WEAK_MODEL = "qwen/qwen-2.5-72b-instruct"
-STRONG_MODEL = "openai/gpt-4o-2024-11-20"
+PRESET_MODELS = {
+    "Claude Sonnet 4": "anthropic/claude-sonnet-4-20250514",
+    "GPT-4o": "openai/gpt-4o-2024-11-20",
+    "Gemini 2.5 Pro": "google/gemini-2.5-pro-preview-03-25",
+    "DeepSeek-V3": "deepseek/deepseek-chat",
+    "Qwen 2.5 72B": "qwen/qwen-2.5-72b-instruct",
+    "Llama 3.3 70B": "meta-llama/llama-3.3-70b-instruct",
+    "Gemini 2.0 Flash": "google/gemini-2.0-flash-001",
+    "Custom...": "__custom__",
+}
 
 with st.sidebar:
     st.markdown("### Model")
-    model_choice = st.selectbox(
-        "Select model", ["Weak (Qwen 2.5)", "Strong (GPT-4o)"],
-        label_visibility="collapsed"
-    )
-    selected_model = STRONG_MODEL if model_choice == "Strong (GPT-4o)" else WEAK_MODEL
+    model_labels = list(PRESET_MODELS.keys())
+    model_choice = st.selectbox("Select model", model_labels, label_visibility="collapsed")
+
+    if model_choice == "Custom...":
+        selected_model = st.text_input(
+            "Model ID", os.getenv("LLM_MODEL", ""),
+            placeholder="e.g. anthropic/claude-sonnet-4-20250514",
+        )
+    else:
+        selected_model = PRESET_MODELS[model_choice]
 
     if "model" not in st.session_state or st.session_state.model != selected_model:
         st.session_state.model = selected_model
@@ -245,9 +258,9 @@ with st.sidebar:
         st.session_state.agent.reset()
         st.session_state.messages = []
 
-    st.caption(f"Using `{selected_model.split('/')[-1]}`")
+    st.caption(f"Using `{selected_model.split('/')[-1] if '/' in selected_model else selected_model}`")
     st.divider()
-    st.caption("**Dormitory Q&A** — ask about rooms, AC units, sensors, and relationships in the knowledge graph.")
+    st.caption("**Dormitory Q&A** — Ask about rooms, AC units, sensors, and relationships in the knowledge graph.")
 
 agent = st.session_state.agent
 llm_available = agent.is_available()
