@@ -326,27 +326,31 @@ def _try_time_series(text, service):
 
     data = ts["data"]
     value_cols = [c for c in ts.get("columns", []) if c not in ("time", "timestamp")]
-    parts = [f"### Time Series — {node_name} ({ts['label']})"]
+    parts = [f"#### Time Series — {node_name} ({ts['label']})"]
 
-    # Build a data table
+    # Summary line
     val_summaries = []
     for col in value_cols:
         vals = [row[col] for row in data if col in row]
         if vals:
             avg = round(sum(vals) / len(vals), 1)
             lo, hi = min(vals), max(vals)
-            val_summaries.append(f"{col}: avg {avg}, min {lo}, max {hi}")
+            val_summaries.append(f"**{col}**: avg {avg}, min {lo}, max {hi}")
     if val_summaries:
-        parts.append("_" + "; ".join(val_summaries) + "_")
+        parts.append("<div style='font-size:13px;color:#6b6578;margin:4px 0 8px'>" + " · ".join(val_summaries) + "</div>")
 
-    col_widths = {}
-    for col in ts["columns"]:
-        items = [str(row.get(col, "")) for row in data[:24]]
-        col_widths[col] = max(len(col), max(len(i) for i in items))
-    header = " | ".join(c.ljust(col_widths[c]) for c in ts["columns"])
-    sep = " | ".join("-" * col_widths[c] for c in ts["columns"])
-    rows = [" | ".join(str(row.get(c, "")).ljust(col_widths[c]) for c in ts["columns"]) for row in data[:24]]
-    parts.append(f"```\n{header}\n{sep}\n" + "\n".join(rows) + "\n```")
+    # HTML table
+    cols = ts["columns"]
+    thead = "".join(f"<th style='text-align:left;padding:4px 12px 4px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#9c94a8;border-bottom:1px solid rgba(0,0,0,0.06);font-weight:500'>{c}</th>" for c in cols)
+    trows = ""
+    for row in data[:24]:
+        cells = "".join(f"<td style='padding:3px 12px 3px 0;font-size:13px;color:#4a4560;font-variant-numeric:tabular-nums'>{row.get(c, '')}</td>" for c in cols)
+        trows += f"<tr>{cells}</tr>"
+    parts.append(
+        f"<div style='overflow-x:auto;margin:4px 0'>"
+        f"<table style='border-collapse:collapse;width:100%'><thead><tr>{thead}</tr></thead><tbody>{trows}</tbody></table>"
+        f"</div>"
+    )
 
     parts.append({"chart": ts})
     return parts
