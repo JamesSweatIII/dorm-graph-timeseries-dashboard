@@ -22,8 +22,8 @@ st.markdown("""
 section[data-testid="stMain"] { max-width: 100% !important; }
 .main > .block-container {
     max-width: 820px !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
     margin: 0 auto !important;
 }
 [data-testid="stVerticalBlock"] { width: 100% !important; }
