@@ -1,3 +1,4 @@
+import json
 from neo4j import GraphDatabase
 
 
@@ -266,6 +267,37 @@ class DormSearchService:
         if not node:
             return None
         return generate_time_series(node["id"], node["type"], node["subtype"])
+
+    def query_knowledge_graph(self, cypher_query: str) -> str:
+        """Execute arbitrary Cypher against Neo4j and return JSON string of results."""
+        try:
+            with self.driver.session() as s:
+                result = list(s.run(cypher_query))
+                data = [dict(r) for r in result]
+                return json.dumps(data, default=str)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    def fetch_time_series_metrics(self, entity_id: str, metric: str = "") -> str:
+        """Fetch 24-hour time series readings for a node. Returns JSON with label, metrics list, and readings."""
+        try:
+            ts = self.get_time_series_for_node(entity_id)
+            if not ts:
+                return json.dumps({"error": f"Entity '{entity_id}' not found."})
+            data = ts["data"]
+            cols = ts.get("columns", [])
+            if metric and metric != "all" and metric in cols:
+                values = [{"time": row["time"], metric: row.get(metric)} for row in data]
+            else:
+                values = data
+            return json.dumps({
+                "entity_id": entity_id,
+                "label": ts["label"],
+                "available_metrics": cols,
+                "readings": values
+            }, default=str)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
 
     # ── Mutations ────────────────────────────────────────────────────────────────
 

@@ -1,323 +1,116 @@
 import json
 import os
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 
 
-SYSTEM_PROMPT = """You are a helpful dormitory management assistant. You have access to a Neo4j knowledge graph containing rooms, AC units, and sensors with their relationships.
+SYSTEM_PROMPT = """You are a precise dormitory management assistant. You have access to a Neo4j knowledge graph (rooms, AC units, sensors) and time-series data.
 
-Available node types:
-- Room: has room_id (e.g. "Room01"), room_type ("dorm" or "mechanical_room")
-- ACUnit: has ac_id (e.g. "AC1")
-- Sensor: has sensor_id (e.g. "T01", "Occ_Room01"), type ("temperature" or "occupancy")
+CRITICAL RULES — You MUST follow these every time:
 
-Relationships:
-- (ACUnit)-[:SERVICES]->(Room) — AC unit cools a room
-- (ACUnit)-[:LOCATED_IN]->(Room) — AC unit is physically located in a room
-- (Room)-[:HAS_SENSOR]->(Sensor) — room has a sensor
-- (Sensor)-[:MONITORS]->(ACUnit) — sensor monitors an AC unit
+1. ALWAYS use `query_knowledge_graph` to look up entities, relationships, counts, or aggregations. NEVER guess or infer from memory.
 
-Always call the appropriate function to answer the user's question. If you need to get details first before answering, make multiple function calls. For chart data, call get_time_series_for_node and present the data clearly, mentioning what metrics are available."""
+2. ALWAYS use `fetch_time_series_metrics` for any numerical reading (temperature, humidity, power, load, etc.). NEVER invent metric values.
 
+3. If a tool returns empty, null, or an error, say "I don't have enough information to answer that" and ask the user to clarify.
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_room",
-            "description": "Get details about a room by its room_id (e.g. Room01, Room07)",
-            "parameters": {"type": "object", "properties": {
-                "room_id": {"type": "string", "description": "Room ID like Room01"}
-            }, "required": ["room_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_ac_unit",
-            "description": "Get details about an AC unit by its ac_id (e.g. AC1, AC2)",
-            "parameters": {"type": "object", "properties": {
-                "ac_id": {"type": "string", "description": "AC unit ID like AC1"}
-            }, "required": ["ac_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_sensor",
-            "description": "Get details about a sensor by its sensor_id (e.g. T01, Occ_Room01)",
-            "parameters": {"type": "object", "properties": {
-                "sensor_id": {"type": "string", "description": "Sensor ID"}
-            }, "required": ["sensor_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "search_nodes",
-            "description": "Search for any node by text across all properties",
-            "parameters": {"type": "object", "properties": {
-                "query": {"type": "string", "description": "Search text"}
-            }, "required": ["query"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_rooms_with_sensor_type",
-            "description": "Find rooms that have a specific type of sensor",
-            "parameters": {"type": "object", "properties": {
-                "sensor_type": {"type": "string", "enum": ["temperature", "occupancy"]}
-            }, "required": ["sensor_type"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_rooms_without_sensor_type",
-            "description": "Find rooms that do NOT have a specific type of sensor",
-            "parameters": {"type": "object", "properties": {
-                "sensor_type": {"type": "string", "enum": ["temperature", "occupancy"]}
-            }, "required": ["sensor_type"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_rooms_without_sensors",
-            "description": "Find rooms that have no sensors at all",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_rooms_served_by",
-            "description": "Find all rooms served by a specific AC unit",
-            "parameters": {"type": "object", "properties": {
-                "ac_id": {"type": "string", "description": "AC unit ID like AC1"}
-            }, "required": ["ac_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_all_rooms",
-            "description": "Get a list of all rooms with their types and counts",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_all_ac_units",
-            "description": "Get a list of all AC units",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_all_sensors",
-            "description": "Get a list of all sensors with their types",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_average_sensors_per_room",
-            "description": "Calculate the average number of sensors per room",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_ac_located_in",
-            "description": "Find which AC unit is located in a specific room",
-            "parameters": {"type": "object", "properties": {
-                "room_id": {"type": "string", "description": "Room ID like Room07"}
-            }, "required": ["room_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_monitored_by",
-            "description": "Find which sensors monitor a specific room",
-            "parameters": {"type": "object", "properties": {
-                "room_id": {"type": "string", "description": "Room ID like Room01"}
-            }, "required": ["room_id"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_time_series_for_node",
-            "description": "Get 24-hour time series readings for a node. Rooms have temperature & humidity. AC units have power_kw & load_pct. Sensors have value (temperature C or occupancy %).",
-            "parameters": {"type": "object", "properties": {
-                "name": {"type": "string", "description": "Node display name like Room01, AC1, T01, Occ_Room01"}
-            },             "required": ["name"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_aggregate_reading",
-            "description": "Get aggregate (average/min/max) readings for a node's metric over the last 24 hours. Use for questions about average temperature, humidity, power, etc.",
-            "parameters": {"type": "object", "properties": {
-                "name": {"type": "string", "description": "Node display name like Room01, AC1, T01, Occ_Room01"},
-                "metric": {"type": "string", "enum": ["temperature", "humidity", "power_kw", "load_pct", "value"], "description": "The metric to aggregate"}
-            }, "required": ["name", "metric"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_room",
-            "description": "Add a new room to the graph. If no room_id given, auto-increment is used.",
-            "parameters": {"type": "object", "properties": {
-                "room_id": {"type": "string", "description": "Optional custom room ID like Room09"},
-                "room_type": {"type": "string", "enum": ["dorm", "mechanical_room"], "description": "Type of room"}
-            }}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_ac_unit",
-            "description": "Add a new AC unit to the graph. If no ac_id given, auto-increment is used.",
-            "parameters": {"type": "object", "properties": {
-                "ac_id": {"type": "string", "description": "Optional custom AC ID like AC3"}
-            }}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_sensor",
-            "description": "Add a new sensor to the graph. If no sensor_id given, auto-increment is used.",
-            "parameters": {"type": "object", "properties": {
-                "sensor_id": {"type": "string", "description": "Optional custom sensor ID like T07"},
-                "sensor_type": {"type": "string", "enum": ["temperature", "occupancy"]}
-            }}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "delete_node",
-            "description": "Delete a node from the graph by its display name",
-            "parameters": {"type": "object", "properties": {
-                "name": {"type": "string", "description": "Node display name like Room09, AC3, T07"}
-            }, "required": ["name"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "delete_relationship",
-            "description": "Delete a relationship between two nodes by type",
-            "parameters": {"type": "object", "properties": {
-                "node_a": {"type": "string", "description": "Source node name"},
-                "rel_type": {"type": "string", "description": "Relationship type like SERVICES, LOCATED_IN, HAS_SENSOR, MONITORS"},
-                "node_b": {"type": "string", "description": "Target node name"}
-            }, "required": ["node_a", "rel_type", "node_b"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_sensors_to_rooms",
-            "description": "Add sensors to multiple rooms at once and link them with HAS_SENSOR. Use this instead of calling add_sensor separately for each room.",
-            "parameters": {"type": "object", "properties": {
-                "room_ids": {"type": "array", "items": {"type": "string"}, "description": "List of room IDs like ['Room07', 'Room08']"},
-                "sensor_type": {"type": "string", "enum": ["temperature", "occupancy"]}
-            }, "required": ["room_ids"]}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_relationship",
-            "description": "Create a relationship between two existing nodes. Use for connecting rooms to AC units (SERVICES), placing AC units in rooms (LOCATED_IN), or linking sensors to rooms (HAS_SENSOR) or AC units (MONITORS).",
-            "parameters": {"type": "object", "properties": {
-                "node_a": {"type": "string", "description": "Source node name like Room09, AC2"},
-                "rel_type": {"type": "string", "description": "Relationship type: SERVICES, LOCATED_IN, HAS_SENSOR, MONITORS"},
-                "node_b": {"type": "string", "description": "Target node name like AC2, Room01, T01"}
-            }, "required": ["node_a", "rel_type", "node_b"]}
-        }
-    }
-]
+4. Break complex questions into multiple tool calls. For example: first find the entity, then query its metrics. The tools can be called sequentially.
+
+Available node labels:
+  - Room (properties: room_id, room_type)
+  - ACUnit (properties: ac_id)
+  - Sensor (properties: sensor_id, type)
+
+Relationship types: :SERVICES, :LOCATED_IN, :HAS_SENSOR, :MONITORS
+
+Useful Cypher patterns:
+  - MATCH (r:Room) RETURN r.room_id, r.room_type
+  - MATCH (a:ACUnit)-[:SERVICES]->(r:Room) RETURN a.ac_id, r.room_id
+  - MATCH (a:ACUnit)-[:LOCATED_IN]->(r:Room) RETURN a.ac_id, r.room_id
+  - MATCH (r:Room)-[:HAS_SENSOR]->(s:Sensor) RETURN r.room_id, s.sensor_id, s.type
+  - MATCH (s:Sensor)-[:MONITORS]->(a:ACUnit) RETURN s.sensor_id, a.ac_id
+  - For averages: MATCH (r:Room)-[:HAS_SENSOR]->(s:Sensor {type:'temperature'}) RETURN count(DISTINCT r) AS rooms, count(s) AS sensors
+  - For counts: MATCH (n) RETURN count(n) AS total
+
+Rooms are zero-padded (Room01, Room02...). If a user says "room 1", query for "Room01".
+
+If you cannot determine the answer from the tools, say "I don't know" and ask for clarification."""
 
 
 class Agent:
-    def __init__(self, dorm_service, model=None, base_url=None, api_key=None):
-        self.service = dorm_service
+    def __init__(self, service, model=None, base_url=None, api_key=None):
+        self.service = service
         self.model = model or os.getenv("LLM_MODEL", "qwen2.5:7b")
         base_url = base_url or os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
         api_key = api_key or os.getenv("LLM_API_KEY", "ollama")
+
+        @tool
+        def query_knowledge_graph(cypher_query: str) -> str:
+            """Execute a Cypher query against the Neo4j knowledge graph. Use this to look up rooms, AC units, sensors, their relationships, counts, and aggregations (avg, min, max). Returns JSON results."""
+            return self.service.query_knowledge_graph(cypher_query)
+
+        @tool
+        def fetch_time_series_metrics(entity_id: str, metric: str = "") -> str:
+            """Fetch 24-hour time series readings for a node. Use for temperature, humidity, power, load data. entity_id is the node name (e.g. Room01, AC1, T01). metric is optional: 'temperature', 'humidity', 'power_kw', 'load_pct', 'value', or leave empty for all."""
+            return self.service.fetch_time_series_metrics(entity_id, metric)
+
+        self.tools = [query_knowledge_graph, fetch_time_series_metrics]
+
         try:
-            self.client = OpenAI(base_url=base_url, api_key=api_key)
-        except Exception:
-            self.client = None
-        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            self.llm = ChatOpenAI(
+                model=self.model,
+                base_url=base_url,
+                api_key=api_key,
+                temperature=0.05,
+            )
+            self.llm_with_tools = self.llm.bind_tools(self.tools)
+        except Exception as e:
+            self.llm = None
+            self.llm_with_tools = None
+
+        self.messages = [SystemMessage(content=SYSTEM_PROMPT)]
 
     def is_available(self):
-        return self.client is not None
+        return self.llm is not None
 
-    def _call_function(self, name, args):
-        fn = getattr(self.service, name, None)
+    def _call_tool(self, name, args):
+        fn_map = {
+            "query_knowledge_graph": self.service.query_knowledge_graph,
+            "fetch_time_series_metrics": self.service.fetch_time_series_metrics,
+        }
+        fn = fn_map.get(name)
         if not fn:
-            return f"Error: function {name} not found"
+            return json.dumps({"error": f"Unknown tool: {name}"})
         try:
-            result = fn(**args)
-            return json.dumps(result, default=str)
+            return fn(**args)
         except Exception as e:
             return json.dumps({"error": str(e)})
 
     def ask(self, user_input):
-        if not self.client:
+        if not self.llm:
             return None
 
-        self.messages.append({"role": "user", "content": user_input})
+        self.messages.append(HumanMessage(content=user_input))
         max_turns = 10
 
         for _ in range(max_turns):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=self.messages,
-                    tools=TOOLS,
-                    tool_choice="auto",
-                    temperature=0.1,
-                )
+                response = self.llm_with_tools.invoke(self.messages)
             except Exception as e:
                 return f"LLM error: {e}"
 
-            msg = response.choices[0].message
+            if not response.tool_calls:
+                self.messages.append(response)
+                return response.content
 
-            if not msg.tool_calls:
-                out = msg.content or ""
-                self.messages.append({"role": "assistant", "content": out})
-                return out
+            self.messages.append(response)
 
-            self.messages.append(msg)
+            for tc in response.tool_calls:
+                result = self._call_tool(tc.name, tc.args)
+                self.messages.append(ToolMessage(content=result, tool_call_id=tc.id))
 
-            for tc in msg.tool_calls:
-                name = tc.function.name
-                try:
-                    args = json.loads(tc.function.arguments) if tc.function.arguments else {}
-                except json.JSONDecodeError:
-                    args = {}
-                result = self._call_function(name, args)
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": result
-                })
-
-        return "I've reached the maximum number of steps. Please try a simpler question."
+        return "I've reached the maximum number of reasoning steps. Please try a simpler question."
 
     def reset(self):
-        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.messages = [SystemMessage(content=SYSTEM_PROMPT)]

@@ -372,10 +372,7 @@ if st.session_state.thinking:
 
     result = route_query(last_prompt, service)
 
-    if result == [None]:
-        reply_text = "Which node would you like details about? Please specify a room, AC unit, or sensor."
-        st.session_state.messages.append({"role": "assistant", "content": reply_text})
-    elif result[0] is FALLBACK:
+    if result[0] is FALLBACK:
         if llm_available:
             reply_text = agent.ask(last_prompt)
         else:
