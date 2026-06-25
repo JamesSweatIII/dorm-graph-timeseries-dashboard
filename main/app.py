@@ -334,11 +334,17 @@ if not st.session_state.messages:
 else:
     for msg in st.session_state.messages:
         if isinstance(msg["content"], list):
+            text_parts = []
             for item in msg["content"]:
                 if isinstance(item, dict) and "chart" in item:
+                    if text_parts:
+                        write_message("assistant", "\n\n".join(text_parts))
+                        text_parts = []
                     render_chart(item)
                 else:
-                    write_message("assistant", str(item))
+                    text_parts.append(str(item))
+            if text_parts:
+                write_message("assistant", "\n\n".join(text_parts))
         else:
             write_message(msg["role"], msg["content"])
 
