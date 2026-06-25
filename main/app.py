@@ -93,8 +93,8 @@ section[data-testid="stMain"] { max-width: 100% !important; padding: 0 !importan
 .chat-area { margin-top: 8px; }
 
 .msg-row {
-    display: flex; margin-bottom: 14px; gap: 10px;
-    opacity: 0; animation: mIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards;
+    display: flex; margin-bottom: 6px; gap: 8px;
+    opacity: 0; animation: mIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards;
 }
 @keyframes mIn { to { opacity: 1; } }
 .msg-row.user { justify-content: flex-end; }
@@ -110,7 +110,7 @@ section[data-testid="stMain"] { max-width: 100% !important; padding: 0 !importan
 .msg-body { max-width: 78%; }
 .msg-body.has-table { max-width: 95%; overflow-x: auto; }
 .msg-bubble {
-    padding: 10px 16px; border-radius: 18px; font-size: 14px; line-height: 1.55;
+    padding: 8px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5;
     color: #2d2a3e; word-wrap: break-word; position: relative;
 }
 .msg-bubble.user {
