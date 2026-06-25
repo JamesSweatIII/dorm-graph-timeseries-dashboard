@@ -1,6 +1,7 @@
+# Dorm-Graph-Timeseries-Dashboard — Streamlit Q&A agent over a Neo4j dormitory knowledge graph
 services:
   - type: web
-    name: dormitory-agent
+    name: dorm-graph-qa
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run main/app.py --server.port $PORT --server.headless true
