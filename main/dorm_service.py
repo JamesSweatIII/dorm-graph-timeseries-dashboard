@@ -267,23 +267,27 @@ class DormSearchService:
             return None
         return generate_time_series(node["id"], node["type"], node["subtype"])
 
-    def get_average_temperature(self):
-        rooms = self.get_all_rooms()
-        temps = []
-        for r in rooms:
-            node = self.resolve_node(r["id"])
-            if not node:
-                continue
-            ts = self.get_time_series_for_node(r["id"])
-            if ts and "temperature" in ts.get("columns", []):
-                vals = [d["temperature"] for d in ts["data"] if "temperature" in d]
-                if vals:
-                    temps.append(sum(vals) / len(vals))
-        if not temps:
-            return None
-        return round(sum(temps) / len(temps), 1)
-
     # ── Mutations ────────────────────────────────────────────────────────────────
+
+    def get_aggregate_reading(self, name, metric="temperature"):
+        node = self.resolve_node(name)
+        if not node:
+            return {"error": f"Node '{name}' not found."}
+        ts = self.get_time_series_for_node(name)
+        if not ts or not ts.get("data"):
+            return {"error": f"No time series data for '{name}'."}
+        if metric not in ts.get("columns", []):
+            return {"error": f"Metric '{metric}' not available for '{name}'. Available: {ts['columns']}"}
+        values = [row[metric] for row in ts["data"] if metric in row]
+        if not values:
+            return {"error": f"No {metric} readings for '{name}'."}
+        avg = round(sum(values) / len(values), 1)
+        lo = min(values)
+        hi = max(values)
+        return {
+            "node": name, "metric": metric, "average": avg,
+            "min": lo, "max": hi, "readings": len(values)
+        }
 
     def add_room(self, room_id=None, room_type="dorm"):
         with self.driver.session() as s:

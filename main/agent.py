@@ -157,7 +157,18 @@ TOOLS = [
             "description": "Get 24-hour time series readings for a node. Rooms have temperature & humidity. AC units have power_kw & load_pct. Sensors have value (temperature C or occupancy %).",
             "parameters": {"type": "object", "properties": {
                 "name": {"type": "string", "description": "Node display name like Room01, AC1, T01, Occ_Room01"}
-            }, "required": ["name"]}
+            },             "required": ["name"]}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_aggregate_reading",
+            "description": "Get aggregate (average/min/max) readings for a node's metric over the last 24 hours. Use for questions about average temperature, humidity, power, etc.",
+            "parameters": {"type": "object", "properties": {
+                "name": {"type": "string", "description": "Node display name like Room01, AC1, T01, Occ_Room01"},
+                "metric": {"type": "string", "enum": ["temperature", "humidity", "power_kw", "load_pct", "value"], "description": "The metric to aggregate"}
+            }, "required": ["name", "metric"]}
         }
     },
     {
