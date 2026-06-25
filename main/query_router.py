@@ -119,18 +119,37 @@ def route_query(text, service):
             return [f"**All Sensors** ({len(sensors)} total — {temps} temperature, {occs} occupancy)",
                     ", ".join(f"{s['id']} ({s['type']})" for s in sensors)]
 
-    # ── Time series: show readings/chart for a node ──────────────────────────────
-    # But skip if asking for aggregate averages across all rooms — that needs LLM
-    if re.search(r"average.*temperature|temperature.*average|average.*temp|average of all", text_lower):
-        return [FALLBACK]
+    # ── Aggregation: averages / readings ────────────────────────────────────────
+    avg = re.search(r"average\s+(?:the\s+)?(\w+)", text_lower)
+    if avg:
+        metric = avg.group(1)
+        metric_map = {"temperature": "temperature", "temp": "temperature",
+                      "humidity": "humidity", "power": "power_kw",
+                      "load": "load_pct"}
+        mapped = metric_map.get(metric)
+        node = _extract_node_name(text)
+        if mapped and node:
+            result = service.get_aggregate_reading(node, mapped)
+            if "error" not in result:
+                display_metric = {"power_kw": "Power (kW)", "load_pct": "Load (%)", "temperature": "Temperature", "humidity": "Humidity", "value": "Value"}.get(mapped, mapped.replace("_", " ").title())
+                return [f"**{result['node']}** — average {display_metric}: **{result['average']}** (min: {result['min']}, max: {result['max']}, over {result['readings']} readings)"]
+        if mapped and not node:
+            # "average temperature of all rooms" → needs LLM
+            return [FALLBACK]
+        if node and not mapped and node:
+            # "average of Room01" → figure out metrics
+            node_info = service.resolve_node(node)
+            if node_info:
+                return [FALLBACK]
+        if not mapped and not node:
+            if "sensor" in text_lower or "per room" in text_lower:
+                avg_s = service.get_average_sensors_per_room()
+                return [f"Average number of sensors per room: **{avg_s}**"]
+
+    # ── Time series: chart/readings for a specific node ─────────────────────────
     ts = _try_time_series(text_lower, service)
     if ts:
         return ts
-
-    # ── Aggregation: averages / counts ──────────────────────────────────────────
-    if re.search(r"average\s+(\w+)", text_lower) and ("sensor" in text_lower or "per room" in text_lower):
-        avg = service.get_average_sensors_per_room()
-        return [f"Average number of sensors per room: **{avg}**"]
 
     if re.search(r"(how many|count|total number)", text_lower):
         parts = []
@@ -297,14 +316,25 @@ def _try_time_series(text, service):
 
 def _extract_node_name(text):
     patterns = [
-        r"(?:for|of|from|in|on)\s+(room\d+|ac\d+|t\d+|occ\d+)",
-        r"\b(room\d+|ac\d+|t\d+|occ\d+)\b"
+        r"(?:for|of|from|in|on)\s+(room\s*\d+|ac\s*\d+|t\d+|occ\d+)",
+        r"\b(room\s*\d+|ac\s*\d+|t\d+|occ\d+)\b"
     ]
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE)
         if m:
-            raw = m.group(1)
-            return raw[0].upper() + raw[1:] if raw[0].islower() else raw
+            raw = re.sub(r"\s+", "", m.group(1))
+            raw = raw[0].upper() + raw[1:] if raw[0].islower() else raw
+            m2 = re.match(r"(Room|AC|T|Occ)(\d+)$", raw, re.IGNORECASE)
+            if m2:
+                prefix = m2.group(1)
+                num = int(m2.group(2))
+                if prefix.upper() == "ROOM":
+                    return f"Room{num:02d}"
+                elif prefix.upper() == "AC":
+                    return f"AC{num}"
+                else:
+                    return f"{prefix.upper()}{num}"
+            return raw
     return None
 
 
