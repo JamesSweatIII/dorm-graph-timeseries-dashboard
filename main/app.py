@@ -12,7 +12,7 @@ NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
 
-st.set_page_config(page_title="Dormitory Agent", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dormitory Agent", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
