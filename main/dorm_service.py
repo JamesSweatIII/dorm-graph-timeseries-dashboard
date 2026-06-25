@@ -267,6 +267,22 @@ class DormSearchService:
             return None
         return generate_time_series(node["id"], node["type"], node["subtype"])
 
+    def get_average_temperature(self):
+        rooms = self.get_all_rooms()
+        temps = []
+        for r in rooms:
+            node = self.resolve_node(r["id"])
+            if not node:
+                continue
+            ts = self.get_time_series_for_node(r["id"])
+            if ts and "temperature" in ts.get("columns", []):
+                vals = [d["temperature"] for d in ts["data"] if "temperature" in d]
+                if vals:
+                    temps.append(sum(vals) / len(vals))
+        if not temps:
+            return None
+        return round(sum(temps) / len(temps), 1)
+
     # ── Mutations ────────────────────────────────────────────────────────────────
 
     def add_room(self, room_id=None, room_type="dorm"):
